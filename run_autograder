@@ -1,0 +1,111 @@
+#!/bin/bash
+
+set -e -u -o pipefail -x
+
+umask 007
+cd /autograder
+
+# Allow student code to access source directory only
+chmod o= *
+chmod o=rx source
+
+# Create student-facing output file
+OUT=/autograder/results/student_facing_output
+truncate -s 0 $OUT
+
+function fatal() {
+	jq --raw-input --slurp --argjson SECONDS $SECONDS '{
+		score: 0,
+		output: .,
+		output_format: "ansi",
+		execution_time: $SECONDS
+	}' < "$OUT" > /autograder/results/results.json
+	exit
+}
+
+# Ensure we have just one file
+submitted_files=( $(ls submission) )
+num_files=${#submitted_files[@]}
+if [ $num_files -ne 1 ]
+then
+	echo "Expected 1 file in submission but found $num_files:" >> $OUT
+	printf '%s\n' "${submitted_files[@]}"
+	fatal
+fi
+
+# Check name matches *.hpp
+submitted_file="${submitted_files[0]}"
+predictor_name="${submitted_file%.hpp}"
+if [ "${predictor_name}" = "$submitted_file" ] || [ -z "${predictor_name}" ]
+then
+	printf "Filename must be <predictor_name>.hpp.\nGot %s\n" "$submitted_file" >> $OUT
+	fatal
+fi
+
+# Compile program
+cp -f "submission/$submitted_file" source/cbp-ng/predictors/
+pushd source/cbp-ng
+compiler_out="$(mktemp)"
+status=0
+compile_command=(./compile cbp -DPREDICTOR="${predictor_name}<>")
+(umask 002; "${compile_command[@]}" > "$compiler_out" 2>&1) || status=$?
+if [ "$status" != 0 ]
+then
+	cat - "$compiler_out" >> $OUT << EOF
+Error: compilation failed
+
+Command: ${compile_command[*]}
+
+Output:
+EOF
+	fatal
+fi
+
+# Run benchmark
+run_out=results/gcc_test.out
+chmod o=rwx results
+run_command=(./run ./cbp gcc_test_trace.gz results)
+if ! runuser -u student -- sh -c "umask 002; ${run_command[*]}"
+then
+	cat - "$run_out" >> $OUT << EOF
+Error: running cbp failed
+
+Command: ${run_command[*]}
+
+Output:
+EOF
+	fatal
+fi
+
+# Parse output
+IFS=',' read -r trace_name instructions branches cond_branches blocks extra_cycles p1_p2_divergences p1_p2_divergences_block_end p2_mispredictions p1_latency p2_latency energy_per_inst < "$run_out"
+
+# Calculate VFS score
+vfs_score=$(python3 predictor_metrics.py results | python3 vfs.py)
+
+cat "$run_out" >> $OUT
+echo "VFS score: $vfs_score" >> $OUT
+jq --null-input \
+	--argjson SECONDS $SECONDS \
+	--arg raw_stats "$(< "$run_out")" \
+	--argjson p2_mispredictions "$p2_mispredictions" \
+	--argjson p1_latency "$p1_latency" \
+	--argjson p2_latency "$p2_latency" \
+	--argjson energy "$energy_per_inst" \
+	--argjson vfs "$vfs_score" \
+	'{
+		score: 1,
+		execution_time: $SECONDS,
+		tests: [
+			{ name: "Raw results", status: "passed", output: $raw_stats },
+			{ name: "VFS score", status: "passed", output: $vfs | tostring }
+		],
+		leaderboard: [
+			{ name: "P2 mispredictions", value: $p2_mispredictions, order: "asc" },
+			{ name: "P1 latency (cycles)", value: $p1_latency, order: "asc" },
+			{ name: "P2 latency (cycles)", value: $p2_latency, order: "asc" },
+			{ name: "Energy per instruction (fJ)", value: $energy, order: "asc" },
+			{ name: "VFS score", value: $vfs, order: "desc" }
+		]
+	}' < "$OUT" > /autograder/results/results.json
+exit
