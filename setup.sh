@@ -19,6 +19,22 @@ update-alternatives --set g++ /usr/bin/g++-13
 	cd /autograder/source
 	git clone --depth 1 https://github.com/AmpereComputing/cbp-ng.git cbp-ng
 	cd cbp-ng
+	git apply << 'EOF'
+diff --git a/harcom.hpp b/harcom.hpp
+index 0f2b550736..19a3840e0a 100644
+--- a/harcom.hpp
++++ b/harcom.hpp
+@@ -24,6 +24,8 @@
+ #ifndef HARCOM_H
+ #define HARCOM_H
+
++#undef CHEATING_MODE
++
+ #include <cstdint>
+ #include <cassert>
+ #include <cmath>
+
+EOF
 	mkdir traces results
 	ln gcc_test_trace.gz traces/
 )
