@@ -8,9 +8,9 @@ adduser student --no-create-home --disabled-password
 
 # Install tools needed in grader script
 add-apt-repository -y ppa:ubuntu-toolchain-r/test
-apt-get install -y jq g++-13
-update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 13
-update-alternatives --set g++ /usr/bin/g++-13
+apt-get install -y jq g++-12
+update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 12
+update-alternatives --set g++ /usr/bin/g++-12
 
 # Clone cbp-ng repository
 (
