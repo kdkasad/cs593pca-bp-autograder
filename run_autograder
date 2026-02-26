@@ -89,6 +89,7 @@ jq --null-input \
 	--argjson SECONDS $SECONDS \
 	--arg raw_stats "$(< "$run_out")" \
 	--argjson p2_mispredictions "$p2_mispredictions" \
+	--argjson p1_p2_divergences "$p1_p2_divergences" \
 	--argjson p1_latency "$p1_latency" \
 	--argjson p2_latency "$p2_latency" \
 	--argjson energy "$energy_per_inst" \
@@ -104,6 +105,7 @@ jq --null-input \
 			{ name: "P2 mispredictions", value: $p2_mispredictions, order: "asc" },
 			{ name: "P1 latency (cycles)", value: $p1_latency, order: "asc" },
 			{ name: "P2 latency (cycles)", value: $p2_latency, order: "asc" },
+			{ name: "P1/P2 mismatches", value: $p1_p2_divergences, order: "asc" },
 			{ name: "Energy per instruction (fJ)", value: $energy, order: "asc" },
 			{ name: "VFS score", value: $vfs, order: "desc" }
 		]
