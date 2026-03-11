@@ -24,11 +24,15 @@ diff --git a/harcom.hpp b/harcom.hpp
 index 0f2b550736..19a3840e0a 100644
 --- a/harcom.hpp
 +++ b/harcom.hpp
-@@ -24,6 +24,8 @@
+@@ -24,6 +24,12 @@
  #ifndef HARCOM_H
  #define HARCOM_H
 
++#undef FREE_FANOUT
 +#undef CHEATING_MODE
++#undef FLOORPLAN
++#undef FREE_WIRING
++#undef READ_WRITE_RAM
 +
  #include <cstdint>
  #include <cassert>
