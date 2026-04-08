@@ -45,6 +45,10 @@ fi
 # Compile program
 cp -f "submission/$submitted_file" source/cbp-ng/predictors/
 pushd source/cbp-ng
+cat > branch_predictor.hpp << EOF
+#include "predictors/$submitted_file"
+using branch_predictor = PREDICTOR;
+EOF
 compiler_out="$(mktemp)"
 status=0
 compile_command=(./compile cbp -DPREDICTOR="${predictor_name}<>")
